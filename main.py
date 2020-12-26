@@ -26,7 +26,7 @@ class Node:
         self.data = data
 
     def get_siblings(self):
-
+        return
 
     def add_child(self, a):
         self.actions.append(a)
@@ -44,7 +44,7 @@ def get_actions(d):
     A = []
     return A
 
-def get_actions_from_IS()
+def get_actions_from_IS():
     """ get the set of available actions from a state """
 
 def get_states_from_actions(s, A):
@@ -84,13 +84,13 @@ def expand(V, d):
     U = get_U(V, A_d)
     a = random.choice(U)
     v = V.add_child(a)
-    return v, get_state_from_actions(d, a)
+    return v, get_state_from_action(d, a)
 
 def simulate(d):
     A_d = get_actions(d)
     while len(A_d) > 0:
         a = random.choice(A_d)
-        d = get_state_from_actions(d, a)
+        d = get_state_from_action(d, a)
         A_d = get_actions(d)
     return get_utility(d)
 
@@ -120,3 +120,4 @@ def ismcts(IS_0, n, k):
 
 
 if __name__ == '__main__':
+    print()
