@@ -27,6 +27,7 @@ class Pokemon:
 
     def __init__(self, name, item, evs, nature, trait, moves, gen=5):
         self.name = name
+        self.max_health = None
         self.health = None
         self.status = {}
         self.boosts = {}
@@ -58,6 +59,9 @@ class GameStatus:
         self.current1 = current1
         self.current2 = current2
         self.gen = team1[0].gen  # get the gen from the first pokemon of the first team (all are from the same gen)
+        self.chosen_actions = None
+        self.probs = None
+        self.parent = None
 
         self.ser = [
             np.array([0]*len(self.actions[0])),
@@ -89,12 +93,14 @@ class GameStatus:
         damage = random.choice(out["damage"]) if type(out["damage"]) == list else out["damage"]  # this should be a random node
         if c.health == None:
             c.health = out['defender']['originalCurHP']
+            c.max_health = c.health
         old_health = c.health
         c.health -= damage
         print("{} health {} --> {}".format(c.name, old_health, c.health))
 
     def step(self, actions):
         child = copy.deepcopy(self)
+        child.parent = self
         self.calc_damage(actions[0], self.team1[self.current1], self.team2[self.current2], child.team2[child.current2])
         self.calc_damage(actions[1], self.team2[self.current2], self.team1[self.current1], child.team1[child.current1])
         # calculate both damages, modify pokemon stats, return new status
