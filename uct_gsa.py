@@ -59,9 +59,12 @@ def uct_gsa(s0, max_it):
             a1 = choice(s.actions[1], 1, p=p1)
             s.probs = [p0, p1]
             s.chosen_actions = [s.actions[0].index(a0), s.actions[1].index(a1)]
+            s.actions_count[0][s.chosen_actions[0]] += 1
+            s.actions_count[1][s.chosen_actions[1]] += 1
             s1 = s.step([a0[0], a1[0]])
             s = s1
         update_ser(s, is_terminal=True)
+    return s0.actions[0][s0.actions_count[0].index(max(s0.actions_count[0]))]
 
 
 if __name__ == "__main__":
@@ -70,4 +73,4 @@ if __name__ == "__main__":
     gengar = Pokemon(name="Gengar", item="Black Sludge", evs={'spa': 252, 'spe': 252}, nature="Timid",
                      trait="Levitate", moves=["Shadow Ball", "Focus Blast", "Sludge Bomb", "Substitute"])
     G = GameStatus([scyther], [gengar], 0, 0)
-    uct_gsa(G, 100)
+    uct_gsa(G, 10)
