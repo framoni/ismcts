@@ -23,49 +23,22 @@ from subprocess import check_output
 import utils
 
 
-class Pokemon:
+class Node:
 
-    def __init__(self, name, item, evs, nature, trait, moves, gen=5):
-        self.name = name
-        self.max_health = None
-        self.health = None
-        self.status = {}
-        self.boosts = {}
-        self.item = item
-        self.evs = evs
-        self.gen = gen
-        self.nature = nature
-        self.trait = trait
-        self.moves = moves
+    def __init__(self, state):
 
-    # @property
-    # def stats(self):
-    #     # calculate the pokemon stats
-    #     if self.gen < 3:
-    #
-    #     a1 = self.current1.moves
-    #     a2 = self.current2.moves
-    #     return [a1, a2]
+        self.state = json.loads(state)
+        self.sides = self.state['sides']
 
-
-class GameStatus:
-
-    def __init__(self, team1, team2, current1, current2):
-        self.hazards = {"sr": 0, "spikes": 0, "tspikes": 0}
-        self.weather = None
-        self.terrain = None
-        self.team1 = team1
-        self.team2 = team2
-        self.current1 = current1
-        self.current2 = current2
-        self.gen = team1[0].gen  # get the gen from the first pokemon of the first team (all are from the same gen)
         self.chosen_actions = None
+        self.actions_count = [[0]*len(self.actions[0]), [0]*len(self.actions[1])]
         self.probs = None
         self.parent = None
+        self.level = 0
 
         self.ser = [
-            np.array([0]*len(self.actions[0])),
-            np.array([0]*len(self.actions[1]))
+            np.array([0]*len(self.actions[0]), dtype=float),
+            np.array([0]*len(self.actions[1]), dtype=float)
         ]  # sum of expected rewards
 
     def ended(self):
@@ -101,6 +74,7 @@ class GameStatus:
     def step(self, actions):
         child = copy.deepcopy(self)
         child.parent = self
+        child.level = self.level + 1
         self.calc_damage(actions[0], self.team1[self.current1], self.team2[self.current2], child.team2[child.current2])
         self.calc_damage(actions[1], self.team2[self.current2], self.team1[self.current1], child.team1[child.current1])
         # calculate both damages, modify pokemon stats, return new status
@@ -108,6 +82,22 @@ class GameStatus:
 
     @property
     def actions(self):
-        a1 = self.team1[self.current1].moves
-        a2 = self.team2[self.current2].moves
-        return [a1, a2]
+        """For each active pokemon, retrieve the indices of moves that can be selected."""
+        actions = []
+        for i in range(2):
+            actions.append([j for j, m in enumerate(self.move_slots[i]) if not m['disabled']])
+        return actions
+
+    @property
+    def active(self):
+        """For each team, retrieve the indices of the active pokemon."""
+        active1 = self.sides[0]['active']
+        active2 = self.sides[1]['active']
+        return [active1, active2]
+
+    @property
+    def move_slots(self):
+        """For each team, retrieve the active pokemon move slots."""
+        ms1 = self.sides[0]['pokemon'][self.active[0]]['moveSlots']
+        ms2 = self.sides[1]['pokemon'][self.active[1]]['moveSlots']
+        return [ms1, ms2]
