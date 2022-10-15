@@ -1,20 +1,23 @@
 from math import exp
 import numpy as np
 from numpy.random import choice
-from pokemon import GameStatus, Pokemon
+from pokemon import Node, Pokemon
+
+from pokemon_showdown import RandomBattle
 
 # start assuming all nodes are simultaneous
 
-# use as rewards the ratio between the sum of HP % of mons beloning to the player and the same sum calculated for the
+# use as rewards the ratio between the sum of HP % of mons belonging to the player and the same sum calculated for the
 # mons of the opponent
 
 
 sor_dict = {}
 
-ETA = .1
+ETA = .2
 EPS = .1
 
 Kr = .1
+
 
 def exp_ser(ser):
     return np.array([exp(EPS * x) for x in ser])
@@ -28,12 +31,12 @@ def get_p(s):
     p1 = ETA + exp_ser(s.ser[0]) / C1
     p2 = ETA + exp_ser(s.ser[1]) / C2
     return p1, p2
-
+ 
 
 def get_reward(s):
     r1 = Kr + sum([max(0, p.health) / p.max_health for p in s.team1])
     r2 = Kr + sum([max(0, p.health) / p.max_health for p in s.team2])
-    return r1, r2
+    return r1 / s.level, r2 / s.level
 
 
 def update_ser(s, is_terminal, **kwargs):
@@ -45,6 +48,7 @@ def update_ser(s, is_terminal, **kwargs):
         r1, r2 = kwargs['rewards']
     s.ser[0][s.chosen_actions[0]] += (r1/r2) / s.probs[0][s.chosen_actions[0]]
     s.ser[1][s.chosen_actions[1]] += (r2/r1) / s.probs[1][s.chosen_actions[1]]
+    print("Status:", s, "\nser_0: ", dict(zip(s.actions[0], s.ser[0])), "\nser_1: ", dict(zip(s.actions[1], s.ser[1])))
     update_ser(s.parent, is_terminal=False, rewards=(r1, r2))
 
 
@@ -58,9 +62,15 @@ def uct_gsa(s0, max_it):
             a0 = choice(s.actions[0], 1, p=p0)
             a1 = choice(s.actions[1], 1, p=p1)
             s.probs = [p0, p1]
-            s.chosen_actions = [s.actions[0].index(a0), s.actions[1].index(a1)]
-            s.actions_count[0][s.chosen_actions[0]] += 1
-            s.actions_count[1][s.chosen_actions[1]] += 1
+            # s.chosen_actions = [s.actions[0].index(a0), s.actions[1].index(a1)]
+            s.chosen_actions = [a0, a1]
+            # s.actions_count[0][s.chosen_actions[0]] += 1
+            # s.actions_count[1][s.chosen_actions[1]] += 1
+            s.actions_count[0][a0] += 1
+            s.actions_count[1][a1] += 1
+            if s == s0:
+                print("Status:", s, "\nCount: ", dict(zip(s.actions[0], s0.actions_count[0])))
+                print("Status:", s, "\nProbs 0: ", dict(zip(s.actions[0], s0.probs[0])))
             s1 = s.step([a0[0], a1[0]])
             s = s1
         update_ser(s, is_terminal=True)
@@ -68,9 +78,18 @@ def uct_gsa(s0, max_it):
 
 
 if __name__ == "__main__":
-    scyther = Pokemon(name="Scyther", item="Eviolite", evs={'atk': 252, 'spe': 252}, nature="Jolly",
-                      trait="Technician", moves=["Bug Bite", "Aerial Ace", "Brick Break", "Swords Dance"])
-    gengar = Pokemon(name="Gengar", item="Black Sludge", evs={'spa': 252, 'spe': 252}, nature="Timid",
-                     trait="Levitate", moves=["Shadow Ball", "Focus Blast", "Sludge Bomb", "Substitute"])
-    G = GameStatus([scyther], [gengar], 0, 0)
-    uct_gsa(G, 10)
+
+    battle = RandomBattle()
+
+    # scyther = Pokemon(name="Scyther", item="Eviolite", evs={'atk': 252, 'spe': 252}, nature="Jolly",
+    #                   trait="Technician", moves=["Bug Bite", "Aerial Ace", "Brick Break", "Swords Dance"])
+    # gengar = Pokemon(name="Gengar", item="Black Sludge", evs={'spa': 252, 'spe': 252}, nature="Timid",
+    #                  trait="Levitate", moves=["Shadow Ball", "Focus Blast", "Sludge Bomb", "Substitute"])
+    # G = GameStatus([scyther], [gengar], 0, 0)
+    node = Node(battle.state)
+    uct_gsa(node, 100)
+
+    B = RandomBattle()
+    uct_gsa(B, 100)
+
+    # implement debug mode
