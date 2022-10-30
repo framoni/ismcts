@@ -1,7 +1,7 @@
 from math import exp
 import numpy as np
 from numpy.random import choice
-from pokemon import Node, Pokemon
+from pokemon import Node
 
 from pokemon_showdown import RandomBattle
 
@@ -25,7 +25,7 @@ def exp_ser(ser):
 
 def get_p(s):
     sum_exp_0 = np.sum(exp_ser(s.ser[0]))
-    C1 = sum_exp_0 / (1 - len(s.actions[0]) * ETA)
+    C1 = sum_exp_0 / (1 - len(s.actions[0]) * ETA)  # TODO: handle division by zero cases
     sum_exp_1 = np.sum(exp_ser(s.ser[1]))
     C2 = sum_exp_1 / (1 - len(s.actions[1]) * ETA)
     p1 = ETA + exp_ser(s.ser[0]) / C1
@@ -57,21 +57,30 @@ def uct_gsa(s0, max_it):
     while it < max_it:
         it += 1
         s = s0
+        count = 0
+        healths = s.healths
         while not(s.ended()):
             p0, p1 = get_p(s)
-            a0 = choice(s.actions[0], 1, p=p0)
-            a1 = choice(s.actions[1], 1, p=p1)
+            a0 = choice(s.actions[0], 1, p=p0)[0]
+            a1 = choice(s.actions[1], 1, p=p1)[0]
             s.probs = [p0, p1]
             # s.chosen_actions = [s.actions[0].index(a0), s.actions[1].index(a1)]
             s.chosen_actions = [a0, a1]
             # s.actions_count[0][s.chosen_actions[0]] += 1
             # s.actions_count[1][s.chosen_actions[1]] += 1
-            s.actions_count[0][a0] += 1
-            s.actions_count[1][a1] += 1
+            s.actions_count[0][s.actions[0].index(a0)] += 1
+            s.actions_count[1][s.actions[1].index(a1)] += 1
             if s == s0:
                 print("Status:", s, "\nCount: ", dict(zip(s.actions[0], s0.actions_count[0])))
                 print("Status:", s, "\nProbs 0: ", dict(zip(s.actions[0], s0.probs[0])))
-            s1 = s.step([a0[0], a1[0]])
+            battle.step([a0, a1])
+            s1 = Node(battle.uuid, battle.state)
+            if s1.healths == healths:
+                count += 1
+                healths = s1.healths
+                if count == 10:
+                    raise Exception('Simulation is stuck')
+            # s1 = s.step([a0, a1])
             s = s1
         update_ser(s, is_terminal=True)
     return s0.actions[0][s0.actions_count[0].index(max(s0.actions_count[0]))]
@@ -79,14 +88,15 @@ def uct_gsa(s0, max_it):
 
 if __name__ == "__main__":
 
-    battle = RandomBattle()
+    battle = RandomBattle(log=True)
 
     # scyther = Pokemon(name="Scyther", item="Eviolite", evs={'atk': 252, 'spe': 252}, nature="Jolly",
     #                   trait="Technician", moves=["Bug Bite", "Aerial Ace", "Brick Break", "Swords Dance"])
     # gengar = Pokemon(name="Gengar", item="Black Sludge", evs={'spa': 252, 'spe': 252}, nature="Timid",
     #                  trait="Levitate", moves=["Shadow Ball", "Focus Blast", "Sludge Bomb", "Substitute"])
     # G = GameStatus([scyther], [gengar], 0, 0)
-    node = Node(battle.state)
+    node = Node(battle.uuid, battle.state)
+    node.level = 0
     uct_gsa(node, 100)
 
     B = RandomBattle()

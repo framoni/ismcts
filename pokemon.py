@@ -24,10 +24,27 @@ import utils
 
 
 class Node:
+    """A node in the game's tree.
 
-    def __init__(self, state):
+    Attributes
+    ----------
+    name : str
+        first name of the person
+    surname : str
+        family name of the person
+    age : int
+        age of the person
 
-        self.state = json.loads(state)
+    Methods
+    -------
+    info(additional=""):
+        Prints the person's name and age.
+    """
+
+    def __init__(self, uuid, state, print=True):
+
+        self.uuid = uuid
+        self.state = state
         self.sides = self.state['sides']
 
         self.chosen_actions = None
@@ -41,12 +58,26 @@ class Node:
             np.array([0]*len(self.actions[1]), dtype=float)
         ]  # sum of expected rewards
 
+        if print:
+            self.print_teams()
+
+    def print_teams(self):
+        self.healths = []
+        print('-----TEAMS STATE-----\n')
+        for team_id, team in enumerate(self.teams):
+            print(team_id)
+            for pokemon in team:
+                species = pokemon["speciesData"]["id"]
+                print(species, end=' ')
+                print(' '*(15-len(species)), end='')
+                health_ratio = pokemon["hp"] / pokemon["maxhp"]
+                self.healths.append(round(health_ratio*10))
+                for i in range(round(health_ratio*10)):
+                    print('■', end='')
+                print()
+
     def ended(self):
-        if any([p.health == None for p in self.team1 + self.team2]):
-            return False
-        if any([p.health > 0 for p in self.team1]) and any([p.health > 0 for p in self.team2]):
-            return False
-        return True
+        return self.state['ended']
 
     def turn(self):
         # decide who starts first
@@ -75,24 +106,45 @@ class Node:
         child = copy.deepcopy(self)
         child.parent = self
         child.level = self.level + 1
-        self.calc_damage(actions[0], self.team1[self.current1], self.team2[self.current2], child.team2[child.current2])
-        self.calc_damage(actions[1], self.team2[self.current2], self.team1[self.current1], child.team1[child.current1])
+
+        # self.calc_damage(actions[0], self.team1[self.current1], self.team2[self.current2], child.team2[child.current2])
+        # self.calc_damage(actions[1], self.team2[self.current2], self.team1[self.current1], child.team1[child.current1])
         # calculate both damages, modify pokemon stats, return new status
         return child
 
     @property
     def actions(self):
-        """For each active pokemon, retrieve the indices of moves that can be selected."""
-        actions = []
-        for i in range(2):
-            actions.append([j for j, m in enumerate(self.move_slots[i]) if not m['disabled']])
+        """For each player, retrieve the actions that can be selected."""
+        actions = [[], []]
+        if len(self.need_replacement) == 1:
+            actions = [[-1], [-1]]
+            p = self.need_replacement[0]
+            actions[p] = self.available[p]
+        elif len(self.need_replacement) == 2:
+            for p in range(2):
+                actions[p] = self.available[p]
+        else:
+            for i in range(2):
+                if 'mustrecharge' in self.volatiles[i] or 'twoturnmove' in self.volatiles[i]:
+                    actions[i].append(-1)
+                else:
+                    actions[i].extend(['m{}'.format(j) for j, m in enumerate(self.move_slots[i]) if not m['disabled']])
+                    actions[i].extend(self.available[i])
+            # TODO: check possible switches
         return actions
+
+    @property
+    def volatiles(self):
+        """Get volatile conditions for each active pokemon"""
+        v1 = self.sides[0]['pokemon'][self.active[0]]['volatiles']
+        v2 = self.sides[1]['pokemon'][self.active[1]]['volatiles']
+        return [v1, v2]
 
     @property
     def active(self):
         """For each team, retrieve the indices of the active pokemon."""
-        active1 = self.sides[0]['active']
-        active2 = self.sides[1]['active']
+        active1 = [it for it, pokemon in enumerate(self.teams[0]) if pokemon['isActive']][0]
+        active2 = [it for it, pokemon in enumerate(self.teams[1]) if pokemon['isActive']][0]
         return [active1, active2]
 
     @property
@@ -101,3 +153,26 @@ class Node:
         ms1 = self.sides[0]['pokemon'][self.active[0]]['moveSlots']
         ms2 = self.sides[1]['pokemon'][self.active[1]]['moveSlots']
         return [ms1, ms2]
+
+    @property
+    def teams(self):
+        """For each side, retrieve the pokemon team."""
+        team1 = self.sides[0]['pokemon']
+        team2 = self.sides[1]['pokemon']
+        return [team1, team2]
+
+    @property
+    def need_replacement(self):
+        need_replacement = []
+        for i in range(2):
+            if self.sides[i]['faintedThisTurn']:
+                need_replacement.append(i)
+        return need_replacement
+
+    @property
+    def available(self):
+        available = []
+        for i in range(2):
+            available.append(['s{}'.format(it) for it, pokemon in enumerate(self.teams[i]) if pokemon['hp'] > 0
+                              and not pokemon['isActive']])
+        return available
