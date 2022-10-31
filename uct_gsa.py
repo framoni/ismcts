@@ -34,8 +34,8 @@ def get_p(s):
  
 
 def get_reward(s):
-    r1 = Kr + sum([max(0, p.health) / p.max_health for p in s.team1])
-    r2 = Kr + sum([max(0, p.health) / p.max_health for p in s.team2])
+    r1 = Kr + sum([max(0, p["hp"]) / p["maxhp"] for p in s.teams[0]])
+    r2 = Kr + sum([max(0, p["hp"]) / p["maxhp"] for p in s.teams[1]])
     return r1 / s.level, r2 / s.level
 
 
@@ -44,21 +44,23 @@ def update_ser(s, is_terminal, **kwargs):
         return
     if is_terminal:
         r1, r2 = get_reward(s)
-    if not is_terminal:
+    else:
         r1, r2 = kwargs['rewards']
-    s.ser[0][s.chosen_actions[0]] += (r1/r2) / s.probs[0][s.chosen_actions[0]]
-    s.ser[1][s.chosen_actions[1]] += (r2/r1) / s.probs[1][s.chosen_actions[1]]
-    print("Status:", s, "\nser_0: ", dict(zip(s.actions[0], s.ser[0])), "\nser_1: ", dict(zip(s.actions[1], s.ser[1])))
+        actions_idx = [s.actions[0].index(s.chosen_actions[0]), s.actions[1].index(s.chosen_actions[1])]
+        s.ser[0][actions_idx[0]] += (r1/r2) / s.probs[0][actions_idx[0]]
+        s.ser[1][actions_idx[1]] += (r2/r1) / s.probs[1][actions_idx[1]]
+        print("Status:", s, "\nser_0: ", dict(zip(s.actions[0], s.ser[0])), "\nser_1: ", dict(zip(s.actions[1], s.ser[1])))
     update_ser(s.parent, is_terminal=False, rewards=(r1, r2))
 
 
 def uct_gsa(s0, max_it):
     it = 1
     while it < max_it:
+        print('Iteration {}'.format(it))
         it += 1
         s = s0
         count = 0
-        healths = s.healths
+        # healths = s.healths
         while not(s.ended()):
             p0, p1 = get_p(s)
             a0 = choice(s.actions[0], 1, p=p0)[0]
@@ -75,11 +77,13 @@ def uct_gsa(s0, max_it):
                 print("Status:", s, "\nProbs 0: ", dict(zip(s.actions[0], s0.probs[0])))
             battle.step([a0, a1])
             s1 = Node(battle.uuid, battle.state)
-            if s1.healths == healths:
-                count += 1
-                healths = s1.healths
-                if count == 10:
-                    raise Exception('Simulation is stuck')
+            s1.level = s.level + 1
+            s1.parent = s
+            # if s1.healths == healths:
+            #     count += 1
+            #     if count == 10:
+            #         pass
+            # healths = s1.healths
             # s1 = s.step([a0, a1])
             s = s1
         update_ser(s, is_terminal=True)
@@ -88,7 +92,7 @@ def uct_gsa(s0, max_it):
 
 if __name__ == "__main__":
 
-    battle = RandomBattle(log=True)
+    battle = RandomBattle(log=False)
 
     # scyther = Pokemon(name="Scyther", item="Eviolite", evs={'atk': 252, 'spe': 252}, nature="Jolly",
     #                   trait="Technician", moves=["Bug Bite", "Aerial Ace", "Brick Break", "Swords Dance"])

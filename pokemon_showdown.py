@@ -1,7 +1,6 @@
 import json
-import numpy as np
+import os
 import pexpect
-from random import choice
 import time
 
 
@@ -39,6 +38,7 @@ class RandomBattle:
         while True:
             try:
                 state = json.loads(open("{}.txt".format(uuid), "r").read())
+                os.remove("{}.txt".format(uuid))
                 return state
             except (json.decoder.JSONDecodeError, FileNotFoundError):
                 pass
@@ -84,26 +84,26 @@ class RandomBattle:
         # self.calc_damage(actions[1], self.team2[self.current2], self.team1[self.current1], child.team1[child.current1])
         # calculate both damages, modify pokemon stats, return new status
 
-    @property
-    def actions(self):
-        actions = []
-        for player in range(2):
-            actions.extend(self.team[player][self.active[player]]['moveSlots'])
-        return actions
-
-    @property
-    def active(self):
-        active = []
-        for player in range(2):
-            active.extend([idx for idx, p in enumerate(self.team[player]) if p['isActive']])
-        return active
-
-    @property
-    def team(self):
-        team = []
-        for player in range(2):
-            team.extend(self.state['sides'][player]['pokemon'])
-        return team
+    # @property
+    # def actions(self):
+    #     actions = []
+    #     for player in range(2):
+    #         actions.extend(self.team[player][self.active[player]]['moveSlots'])
+    #     return actions
+    #
+    # @property
+    # def active(self):
+    #     active = []
+    #     for player in range(2):
+    #         active.extend([idx for idx, p in enumerate(self.team[player]) if p['isActive']])
+    #     return active
+    #
+    # @property
+    # def team(self):
+    #     team = []
+    #     for player in range(2):
+    #         team.extend(self.state['sides'][player]['pokemon'])
+    #     return team
 
 
     # analyzer.sendline('>freeze')

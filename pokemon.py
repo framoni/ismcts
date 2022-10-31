@@ -41,7 +41,7 @@ class Node:
         Prints the person's name and age.
     """
 
-    def __init__(self, uuid, state, print=True):
+    def __init__(self, uuid, state, print=False):
 
         self.uuid = uuid
         self.state = state
@@ -102,15 +102,15 @@ class Node:
         c.health -= damage
         print("{} health {} --> {}".format(c.name, old_health, c.health))
 
-    def step(self, actions):
-        child = copy.deepcopy(self)
-        child.parent = self
-        child.level = self.level + 1
-
-        # self.calc_damage(actions[0], self.team1[self.current1], self.team2[self.current2], child.team2[child.current2])
-        # self.calc_damage(actions[1], self.team2[self.current2], self.team1[self.current1], child.team1[child.current1])
-        # calculate both damages, modify pokemon stats, return new status
-        return child
+    # def step(self, actions):
+    #     child = copy.deepcopy(self)
+    #     child.parent = self
+    #     child.level = self.level + 1
+    #
+    #     # self.calc_damage(actions[0], self.team1[self.current1], self.team2[self.current2], child.team2[child.current2])
+    #     # self.calc_damage(actions[1], self.team2[self.current2], self.team1[self.current1], child.team1[child.current1])
+    #     # calculate both damages, modify pokemon stats, return new status
+    #     return child
 
     @property
     def actions(self):
@@ -126,7 +126,7 @@ class Node:
         else:
             for i in range(2):
                 if 'mustrecharge' in self.volatiles[i] or 'twoturnmove' in self.volatiles[i]:
-                    actions[i].append(-1)
+                    actions[i].append('m0')
                 else:
                     actions[i].extend(['m{}'.format(j) for j, m in enumerate(self.move_slots[i]) if not m['disabled']])
                     actions[i].extend(self.available[i])
