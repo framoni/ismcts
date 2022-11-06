@@ -33,10 +33,16 @@ def get_p(s):
     return p1, p2
  
 
+# def get_reward(s):
+#     r1 = Kr + sum([max(0, p["hp"]) / p["maxhp"] for p in s.teams[0]])
+#     r2 = Kr + sum([max(0, p["hp"]) / p["maxhp"] for p in s.teams[1]])
+#     return r1 / s.level, r2 / s.level
+
+
 def get_reward(s):
-    r1 = Kr + sum([max(0, p["hp"]) / p["maxhp"] for p in s.teams[0]])
-    r2 = Kr + sum([max(0, p["hp"]) / p["maxhp"] for p in s.teams[1]])
-    return r1 / s.level, r2 / s.level
+    r1 = sum([max(0, p["hp"]) / p["maxhp"] for p in s.teams[0]]) / 6
+    r2 = sum([max(0, p["hp"]) / p["maxhp"] for p in s.teams[1]]) / 6
+    return r1, r2
 
 
 def update_ser(s, is_terminal, **kwargs):
@@ -47,44 +53,49 @@ def update_ser(s, is_terminal, **kwargs):
     else:
         r1, r2 = kwargs['rewards']
         actions_idx = [s.actions[0].index(s.chosen_actions[0]), s.actions[1].index(s.chosen_actions[1])]
-        s.ser[0][actions_idx[0]] += (r1/r2) / s.probs[0][actions_idx[0]]
-        s.ser[1][actions_idx[1]] += (r2/r1) / s.probs[1][actions_idx[1]]
+        # s.ser[0][actions_idx[0]] += (r1/r2) / s.probs[0][actions_idx[0]]
+        # s.ser[1][actions_idx[1]] += (r2/r1) / s.probs[1][actions_idx[1]]
+        s.ser[0][actions_idx[0]] += r1 / s.probs[0][actions_idx[0]]
+        s.ser[1][actions_idx[1]] += r2 / s.probs[1][actions_idx[1]]
         print("Status:", s, "\nser_0: ", dict(zip(s.actions[0], s.ser[0])), "\nser_1: ", dict(zip(s.actions[1], s.ser[1])))
     update_ser(s.parent, is_terminal=False, rewards=(r1, r2))
 
 
 def uct_gsa(s0, max_it):
-    it = 1
+    it = 0
     while it < max_it:
-        print('Iteration {}'.format(it))
         it += 1
+        print('Iteration {}'.format(it))
         s = s0
         count = 0
-        # healths = s.healths
+        healths = s.healths
+        if it > 1:
+            s.write_state()
+            battle.unfreeze(s.uuid)
         while not(s.ended()):
             p0, p1 = get_p(s)
             a0 = choice(s.actions[0], 1, p=p0)[0]
             a1 = choice(s.actions[1], 1, p=p1)[0]
             s.probs = [p0, p1]
-            # s.chosen_actions = [s.actions[0].index(a0), s.actions[1].index(a1)]
             s.chosen_actions = [a0, a1]
-            # s.actions_count[0][s.chosen_actions[0]] += 1
-            # s.actions_count[1][s.chosen_actions[1]] += 1
             s.actions_count[0][s.actions[0].index(a0)] += 1
             s.actions_count[1][s.actions[1].index(a1)] += 1
             if s == s0:
                 print("Status:", s, "\nCount: ", dict(zip(s.actions[0], s0.actions_count[0])))
                 print("Status:", s, "\nProbs 0: ", dict(zip(s.actions[0], s0.probs[0])))
             battle.step([a0, a1])
-            s1 = Node(battle.uuid, battle.state)
-            s1.level = s.level + 1
-            s1.parent = s
-            # if s1.healths == healths:
-            #     count += 1
-            #     if count == 10:
-            #         pass
-            # healths = s1.healths
-            # s1 = s.step([a0, a1])
+            s1 = s.get_child(s.chosen_actions)
+            if s1 is None:
+                s1 = Node(battle.uuid, battle.state)
+                s1.parent_actions = s.chosen_actions
+                s1.level = s.level + 1
+                s1.parent = s
+                s.children.append(s1)
+            if s1.healths == healths:
+                count += 1
+                if count == 10:
+                    pass
+            healths = s1.healths
             s = s1
         update_ser(s, is_terminal=True)
     return s0.actions[0][s0.actions_count[0].index(max(s0.actions_count[0]))]
@@ -92,13 +103,15 @@ def uct_gsa(s0, max_it):
 
 if __name__ == "__main__":
 
-    battle = RandomBattle(log=False)
+    battle = RandomBattle(log=True)
+    battle.root_uuid = battle.uuid
 
     # scyther = Pokemon(name="Scyther", item="Eviolite", evs={'atk': 252, 'spe': 252}, nature="Jolly",
     #                   trait="Technician", moves=["Bug Bite", "Aerial Ace", "Brick Break", "Swords Dance"])
     # gengar = Pokemon(name="Gengar", item="Black Sludge", evs={'spa': 252, 'spe': 252}, nature="Timid",
     #                  trait="Levitate", moves=["Shadow Ball", "Focus Blast", "Sludge Bomb", "Substitute"])
     # G = GameStatus([scyther], [gengar], 0, 0)
+
     node = Node(battle.uuid, battle.state)
     node.level = 0
     uct_gsa(node, 100)

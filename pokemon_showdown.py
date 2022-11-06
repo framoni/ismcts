@@ -9,15 +9,24 @@ class RandomBattle:
     def __init__(self, format_id="gen1ou", log=False):
 
         self.log = log
-        self.startup(format_id)
+        self.format_id = format_id
+        self.root_uuid = None
+
+        self.startup(self.format_id)
+        self.freeze()
 
     def startup(self, format_id):
         """Launch random battle."""
         self.analyzer = pexpect.spawn("../pokemon-showdown/pokemon-showdown", ["simulate-battle"], encoding='utf-8')
+        self.analyzer.expect('\r\n\r\n')
         self.analyzer.sendline('>start {{"formatid":"{}"}}'.format(format_id))
+        self.analyzer.expect('\r\n\r\n')
         self.analyzer.sendline('>player p1 {"name":"Player 1"}')
+        self.analyzer.expect('\r\n\r\n')
         self.analyzer.sendline('>player p2 {"name":"Player 2"}')
-        self.freeze()
+        self.analyzer.expect('\r\n\r\n')
+        self.analyzer.expect('\r\n\r\n')
+        self.analyzer.expect('\r\n\r\n')
 
     def freeze(self):
         """Freeze the battle status."""
@@ -30,15 +39,33 @@ class RandomBattle:
         self.analyzer.expect('\r\n\r\n')
         self.uuid = self.analyzer.before
         # self.state = json.loads(open("{}.txt".format(self.uuid), "r").read())
-        self.state = RandomBattle.read_state(self.uuid)
+        self.state = RandomBattle.read_state(self.uuid, self.root_uuid)
+
+    def unfreeze(self, uuid):  # saving states internally in the simulator could not be useful anymore
+        """Unfreeze the battle status."""
+        while not os.path.exists('{}.txt'.format(uuid)):
+            time.sleep(.5)
+        self.uuid = uuid
+        self.startup(self.format_id)
+        self.analyzer.sendline('>unfreeze {}'.format(uuid))
+        self.analyzer.expect('\r\n\r\n')
+        # self.analyzer.expect('uuid: ')
+        if self.log:
+            print(self.analyzer.before)
+            if 'no such file or directory' in self.analyzer.before:
+                raise Exception('Error occurred while unfreezing')
+        # self.uuid = self.analyzer.before
+        # self.state = json.loads(open("{}.txt".format(self.uuid), "r").read())
+        self.state = RandomBattle.read_state(self.uuid, self.root_uuid)
 
     @staticmethod
-    def read_state(uuid):
+    def read_state(uuid, root_uuid):
         start = time.time()
         while True:
             try:
                 state = json.loads(open("{}.txt".format(uuid), "r").read())
-                os.remove("{}.txt".format(uuid))
+                if uuid != root_uuid:
+                    os.remove("{}.txt".format(uuid))
                 return state
             except (json.decoder.JSONDecodeError, FileNotFoundError):
                 pass

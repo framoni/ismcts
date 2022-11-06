@@ -41,7 +41,7 @@ class Node:
         Prints the person's name and age.
     """
 
-    def __init__(self, uuid, state, print=False):
+    def __init__(self, uuid, state, print=True):
 
         self.uuid = uuid
         self.state = state
@@ -51,6 +51,7 @@ class Node:
         self.actions_count = [[0]*len(self.actions[0]), [0]*len(self.actions[1])]
         self.probs = None
         self.parent = None
+        self.children = []
         self.level = 0
 
         self.ser = [
@@ -111,6 +112,16 @@ class Node:
     #     # self.calc_damage(actions[1], self.team2[self.current2], self.team1[self.current1], child.team1[child.current1])
     #     # calculate both damages, modify pokemon stats, return new status
     #     return child
+
+    def write_state(self):
+        with open("{}.txt".format(self.uuid), "w") as f:
+            f.write(json.dumps(self.state))
+
+    def get_child(self, moves):
+        for c in self.children:
+            if c.parent_actions == moves:
+                return c
+        return None
 
     @property
     def actions(self):
