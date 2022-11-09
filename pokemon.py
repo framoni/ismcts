@@ -15,7 +15,6 @@ Start with computing the initial information set IS_0:
 
 """
 
-import copy
 import numpy as np
 import json
 import random
@@ -41,12 +40,12 @@ class Node:
         Prints the person's name and age.
     """
 
-    def __init__(self, uuid, state, print=True):
+    def __init__(self, uuid, state, print=False):
 
         self.uuid = uuid
         self.state = state
         self.sides = self.state['sides']
-
+        self.healths = []
         self.chosen_actions = None
         self.actions_count = [[0]*len(self.actions[0]), [0]*len(self.actions[1])]
         self.probs = None
@@ -63,7 +62,6 @@ class Node:
             self.print_teams()
 
     def print_teams(self):
-        self.healths = []
         print('-----TEAMS STATE-----\n')
         for team_id, team in enumerate(self.teams):
             print(team_id)
@@ -76,13 +74,10 @@ class Node:
                 for i in range(round(health_ratio*10)):
                     print('■', end='')
                 print()
+            print('\n')
 
     def ended(self):
         return self.state['ended']
-
-    def turn(self):
-        # decide who starts first
-        self.team1[self.current1].speed
 
     def calc_damage(self, action, p1, p2, c):
         p1 = self.team1[self.current1]
@@ -102,16 +97,6 @@ class Node:
         old_health = c.health
         c.health -= damage
         print("{} health {} --> {}".format(c.name, old_health, c.health))
-
-    # def step(self, actions):
-    #     child = copy.deepcopy(self)
-    #     child.parent = self
-    #     child.level = self.level + 1
-    #
-    #     # self.calc_damage(actions[0], self.team1[self.current1], self.team2[self.current2], child.team2[child.current2])
-    #     # self.calc_damage(actions[1], self.team2[self.current2], self.team1[self.current1], child.team1[child.current1])
-    #     # calculate both damages, modify pokemon stats, return new status
-    #     return child
 
     def write_state(self):
         with open("{}.txt".format(self.uuid), "w") as f:
@@ -173,7 +158,7 @@ class Node:
         return [team1, team2]
 
     @property
-    def need_replacement(self):
+    def need_replacement(self): # TODO: check if PS changes order of team members (each pokemon should always get the same slot)
         need_replacement = []
         for i in range(2):
             if self.sides[i]['faintedThisTurn']:

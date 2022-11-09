@@ -61,7 +61,7 @@ def update_ser(s, is_terminal, **kwargs):
     update_ser(s.parent, is_terminal=False, rewards=(r1, r2))
 
 
-def uct_gsa(s0, battle, max_it):
+def uct_exp3(s0, battle, max_it):
     it = 0
     while it < max_it:
         it += 1
@@ -110,4 +110,4 @@ if __name__ == "__main__":
     battle.root_uuid = battle.uuid
     node = Node(battle.uuid, battle.state)
     node.level = 0
-    uct_gsa(node, battle, 10)
+    uct_exp3(node, battle, 10)
